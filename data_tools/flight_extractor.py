@@ -67,30 +67,27 @@ class FlightExtractor():
         structured_data = pd.DataFrame()
         
         if data is not None:
-            try:
-                structured_data_list = list()
-                for flight_info, fare_info in zip(data['legs'], data['offers']):
+            structured_data_list = list()
+            for flight_info, fare_info in zip(data['legs'], data['offers']):
 
-                    is_the_same_flight = flight_info['legId'] == fare_info['legIds'][0]
-                    if not is_the_same_flight:
-                        continue
+                is_the_same_flight = flight_info['legId'] == fare_info['legIds'][0]
+                if not is_the_same_flight:
+                    continue
 
-                    structured_flight_df = self._structure_flight_information(flight_info)
-                    structured_fare_df = self._structure_fare_information(fare_info)
-                    structured_df = pd.concat(
-                        [structured_flight_df, structured_fare_df], axis="columns"
-                    )
-                    structured_data_list.append(structured_df)
-                structured_data = pd.concat(structured_data_list, ignore_index=True)
-                structured_collect_df = self._structure_collect_information(data, json_path)
-                structured_collect_df = (
-                    structured_collect_df
-                    .loc[structured_collect_df.index.repeat(len(structured_data))]
-                    .reset_index(drop=True)
+                structured_flight_df = self._structure_flight_information(flight_info)
+                structured_fare_df = self._structure_fare_information(fare_info)
+                structured_df = pd.concat(
+                    [structured_flight_df, structured_fare_df], axis="columns"
                 )
-                structured_data = pd.concat([structured_collect_df, structured_data], axis="columns")
-            except:
-                print("json_path", json_path)
+                structured_data_list.append(structured_df)
+            structured_data = pd.concat(structured_data_list, ignore_index=True)
+            structured_collect_df = self._structure_collect_information(data, json_path)
+            structured_collect_df = (
+                structured_collect_df
+                .loc[structured_collect_df.index.repeat(len(structured_data))]
+                .reset_index(drop=True)
+            )
+            structured_data = pd.concat([structured_collect_df, structured_data], axis="columns")
         return structured_data, error_log_df
     
     def _read_json(self, json_path):
@@ -137,6 +134,7 @@ class FlightExtractor():
         error_log_df: pd.DataFrame
             The log of problems during data structuring.
         """
+        error_log_df = pd.DataFrame(columns=["json_path", "error_message"])
         if data is not None:
             try:
                 necessary_keys = ["legs", "offers", "search_time", "searchCities"]
@@ -152,8 +150,6 @@ class FlightExtractor():
                 error_message = ("Legs or offers with len 0. "
                                  f"legs = {len(data['legs'])}; offers = {len(data['offers'])}")
                 assert len(data['legs']) > 0 and len(data['offers']) > 0, error_message
-                                                
-                error_log_df = pd.DataFrame(columns=["json_path", "error_message"])
             except:
                 data = None
                 error_log_df = pd.DataFrame({"json_path": [json_path],
