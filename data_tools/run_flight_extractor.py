@@ -26,7 +26,7 @@ for day_path in tqdm(days_path_list):
         print(f"Structure data of the day {day_str}")
         
         extractor = FlightExtractor(filenames_all)
-        structured_data, error_log_df = extractor.structure_all_jsons(n_jobs=(64-10))
+        structured_data, error_log_df = extractor.structure_all_jsons(n_jobs=-1)
 
         structured_data.to_parquet(join(path_to_save, day_str + "_structured_data.parquet"))
         if not error_log_df.empty:
