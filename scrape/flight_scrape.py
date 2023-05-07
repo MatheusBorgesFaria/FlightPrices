@@ -34,7 +34,7 @@ AIRPORT_PAIRS = [pair for pair in itertools.product(AIRPORTS, repeat = 2)
 
 def collect_flight_data(today, hour, minute, departure_airport,
                         arrival_airport, flight_day,
-                        maxExceptions=20, overwrite_data=False,
+                        maxExceptions=5, overwrite_data=False,
 			path=""):
     """ Air ticket price web scraper.
 
@@ -53,7 +53,7 @@ def collect_flight_data(today, hour, minute, departure_airport,
         Three-character IATA airport code for the arrival location
     flight_day: datetime.date
         Day of the flight that we will collect the data
-    maxExceptions: int (default=20)
+    maxExceptions: int (default=5)
         Maximum number of attempts to collect data
     overwrite_data: bool (default=False)
         If True overwrite already computed data, if False do not overwrite
@@ -116,7 +116,7 @@ def collect_flight_data(today, hour, minute, departure_airport,
     return success
 
 
-def runner_collect_flight_data(max_additional_day=60, maxExceptions=20,
+def runner_collect_flight_data(max_additional_day=60, maxExceptions=5,
                                n_jobs=-1, hour=None, minute=None,
 			       overwrite_data=False, path=""):
     """ Runs collect_flight_data in parallel.
@@ -124,7 +124,7 @@ def runner_collect_flight_data(max_additional_day=60, maxExceptions=20,
     ----------
     max_additional_day: int (default=60)
         Maximum number of attempts per flight day/departure airport/arrival airport
-    maxExceptions: int (default=20)
+    maxExceptions: int (default=5)
         Maximum number of attempts to collect data
     n_jobs: int (default=-1)
         Number of machine cores that should be used for parallelism.
@@ -162,7 +162,7 @@ def runner_collect_flight_data(max_additional_day=60, maxExceptions=20,
 		    path=path
                 )
             )
-    Parallel(n_jobs=n_jobs , prefer="processes", verbose=1)(delayed_list)
+    Parallel(n_jobs=n_jobs, prefer="processes", verbose=1)(delayed_list)
 
 if __name__ == "__main__":
     path = join("/home","mborges")
