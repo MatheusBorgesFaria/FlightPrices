@@ -22,7 +22,7 @@ class CoordinateScraper():
                                                       "less than or equal to machines_number")
 
         if base_date is None:
-            self.base_date = datetime(2000, 12, 11, 10, 27, 30)
+            self.base_date = datetime(2000, 12, 11, 0, 0, 0)
         else:
             assert isinstance(base_date, datetime), "base_date must be datetime object."
             self.base_date = base_date
