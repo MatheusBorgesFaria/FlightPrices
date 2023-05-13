@@ -80,5 +80,5 @@ CREATE TABLE IF NOT EXISTS flight.equipment (
   equipmentDescription VARCHAR(100) NOT NULL
 );
 
--- Sshow tables of schema flight
+-- Show tables of schema flight
 \dt flight.*

@@ -1,7 +1,8 @@
 # Setup built on a Fedora Linux distribution
 
 # Install useful packages
-sudo dnf install tmux python cronie postgresql-server
+sudo dnf install tmux python cronie
+sudo dnf install postgresql-server postgresql-devel libpq-devel python3-devel
 pip install jupyterlab
 
 # Start cron service
