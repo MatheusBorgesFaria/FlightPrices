@@ -24,3 +24,5 @@ sudo systemctl enable postgresql
 
 # Create a database named flight
 sudo -i -u postgres psql < flight_database_config.sql
+# No user and password allowing connection to the database were created automatically.
+# Best practice is to do this manually.
