@@ -2,14 +2,13 @@ import sys
 
 import numpy as np
 import pandas as pd
-import reverse_geocoder as rg  # ADICIONAR NO REQUIREMENTS
+import reverse_geocoder as rg
 from joblib import Parallel, delayed
 
 sys.path.append("../odbc")
 import query_tools as qt
 from connection import load_conn
 
-from pdb import set_trace
 
 class DatabaseFormat:
     """Transform structured raw data into database format.
@@ -36,27 +35,25 @@ class DatabaseFormat:
         """
         self.parquet_paths = parquet_paths
         self.separator = separator
-        self.conn = load_conn()
         self.unique_value_tables = ["airport", "airline", "equipment"]
         self.tables_columns = {
-            "search": ["search_id", "search_time", "operational_search_time", "flight_day",
-                       "origin_code", "destination_code"],
-            "flight": ["search_id", "legId", "travelDuration", "duration", "durationInSeconds",
+            "search": ["searchId", "searchTime", "operationalSearchTime", "flightDay",
+                       "originCode", "destinationCode"],
+            "flight": ["searchId", "legId", "travelDuration", "duration", "durationInSeconds",
                        "elapsedDays", "isNonStop", "departureTimeRaw",
                        "departureTimeZoneOffsetSeconds", "arrivalTimeRaw",
                        "arrivalTimeZoneOffsetSeconds", "flightNumber", "stops", "airlineCode",
-                       "equipmentCode", "arrivalAirportCode", "departureAirportCode"],
-            "fare": ["search_id", "legId", "fareBasisCode", "isBasicEconomy", "isRefundable",
+                       "equipmentCode", "arrivalAirportCode", "departureAirportCode",
+                       "arrivalAirportLatitude", "arrivalAirportLongitude",
+                       "departureAirportLatitude", "departureAirportLongitude"],
+            "fare": ["searchId", "legId", "fareBasisCode", "isBasicEconomy", "isRefundable",
                      "isFreeChangeAvailable", "taxes", "fees", "showFees",
                      "currency", "baseFare", "totalFare", "numberOfTickets",
                      "freeCancellationBy", "hasSeatMap", "providerCode", "seatsRemaining"],
-            "airport": ["airportCode", "city", "AirportLatitude", "AirportLongitude"],
+            "airport": ["airportCode", "city", "airportLatitude", "airportLongitude"],
             "airline": ["airlineCode", "airlineName", "externalAirlineCode", "operatingAirlineName"],
             "equipment": ["equipmentCode", "equipmentDescription"],
         }
-    
-    def __del__(self):
-        self.conn.close()
     
     def transform_all_parquets(self, n_jobs=-1):
         """Transform structured raw data from all parquet into database format
@@ -94,63 +91,26 @@ class DatabaseFormat:
         """
         data = pd.read_parquet(parquet_path)
         data.reset_index(drop=True, inplace=True)
-        data.reset_index(names="search_id", inplace=True)
+        data.reset_index(names="searchId", inplace=True)
+
+        rename_search_table = {
+            "search_time": "searchTime",
+             "operational_search_time": "operationalSearchTime",
+             "flight_day":  "flightDay",
+             "origin_code": "originCode",
+             "destination_code": "destinationCode"
+        }
+        data.rename(columns=rename_search_table, inplace=True)
         tables = {}
-        tables["search"] = self._transform_search_data(data)
-        tables["flight"] = self._transform_flight_data(data)
-        tables["fare"] = self._transform_fare_data(data)
-        tables["airport"] = self._transform_airport_data(data)
-        tables["airline"] = self._transform_airline_data(data)
-        tables["equipment"] = self._transform_equipment_data(data)
+        for table_name, table_columns in self.tables_columns.items():
+            if "airport" in table_name:
+                    tables[table_name] = self._transform_airport_data(data)
+            else:
+                tables[table_name] = data[table_columns]
+            
+            if table_name in self.unique_value_tables:                
+                tables[table_name] = tables[table_name].drop_duplicates()
         return tables
-    
-    def _transform_search_data(self, data):
-        """Transform structured raw data into search table format.
-
-        Parameters
-        ----------
-        data: pd.DataFrame
-            Structured raw data
-
-        Return
-        ------
-        search_data: pd.DataFrame
-            Data in search table format.
-        """
-        search_data = data[self.tables_columns["search"]]
-        return search_data
-    
-    def _transform_flight_data(self, data):
-        """Transform structured raw data into flight table format.
-
-        Parameters
-        ----------
-        data: pd.DataFrame
-            Structured raw data
-
-        Return
-        ------
-        flight_data: pd.DataFrame
-            Data in flight table format.
-        """
-        flight_data = data[self.tables_columns["flight"]]
-        return flight_data
-    
-    def _transform_fare_data(self, data):
-        """Transform structured raw data into fare table format.
-
-        Parameters
-        ----------
-        data: pd.DataFrame
-            Structured raw data
-
-        Return
-        ------
-        fare_data: pd.DataFrame
-            Data in fare table format.
-        """
-        fare_data = data[self.tables_columns["fare"]]
-        return fare_data
     
     def _transform_airport_data(self, data):
         """Transform structured raw data into airport table format.
@@ -179,47 +139,24 @@ class DatabaseFormat:
         data_destination = data[destination_column].rename(columns=destination_rename)
 
         airport_data = pd.concat([data_origin, data_destination])
-        airport_data = airport_data.drop_duplicates()
 
         columns = self.tables_columns["airport"].copy()
         columns.remove('city')
         return airport_data[columns]
     
-    def _transform_airline_data(self, data):
-        """Transform structured raw data into airline table format.
-
-        Parameters
-        ----------
-        data: pd.DataFrame
-            Structured raw data
-
-        Return
-        ------
-        airline_data: pd.DataFrame
-            Data in airline table format.
-        """
-        columns = self.tables_columns["airline"].copy()
-        airline_data = data[columns].drop_duplicates()
-        return airline_data
-    
-    def _transform_equipment_data(self, data):
-        """Transform structured raw data into equipment table format.
-
-        Parameters
-        ----------
-        data: pd.DataFrame
-            Structured raw data
-
-        Return
-        ------
-        equipment_data: pd.DataFrame
-            Data in equipment table format.
-        """
-        columns = self.tables_columns["equipment"].copy()
-        equipment_data = data[columns].drop_duplicates()
-        return equipment_data
-    
     def _post_processing(self, tables_list):
+        """Post-process the data from the parquets. 
+
+        Parameters
+        ----------
+        tables_list: list[dict[pd.DataFrame]]
+            A list with multiple _transform_parquet outputs.
+
+        Return
+        ------
+        tables: dict[pd.DataFrame]
+             Dictionary with all tables in the database format.
+        """
         # Create only one table dict
         create_table_key = True
         tables = {}
@@ -237,31 +174,26 @@ class DatabaseFormat:
             tables[table_key] = pd.concat(table, ignore_index=True)
             
             # Fix search_id column
-            if "search_id" in self.tables_columns[table_key]:
+            if "searchId" in self.tables_columns[table_key]:
                 end_search_id = next_search_id + len(tables[table_key])
-                tables[table_key]["search_id"] = range(next_search_id, end_search_id)
+                tables[table_key]["searchId"] = range(next_search_id, end_search_id)
             
             # Get unique values
             if table_key in self.unique_value_tables:
                 database_table = qt.get_table(table_key)
                 tables[table_key] = pd.concat([tables[table_key], database_table])
-                tables[table_key] = self._get_unique_values(
-                    tables[table_key], tables[table_key].columns
-                )
+                tables[table_key] = self._get_unique_values(tables[table_key])
                 
-                # Add city column on airport table
-                if "airport" in table_key:
-                    # TEM ERRO AQUI
-                    set_trace()
-                    coordinates = list(
-                        zip(tables[table_key]["AirportLatitude"],
-                            tables[table_key]["AirportLongitude"])
-                    )
-                    airport_data["city"] = self.get_city_from_coordinates(coordinates)                    
+        # Add city column on airport table
+        coordinates = list(
+            zip(tables["airport"]["airportLatitude"],
+                tables["airport"]["airportLongitude"])
+        )
+        tables["airport"]["city"] = self.get_city_from_coordinates(coordinates)                    
             
         return tables
 
-    def _get_unique_values(self, dataframe, columns):
+    def _get_unique_values(self, dataframe, columns=None):
         """Gets the unique values of a detaframe considering flight leg.
 
         Parameters
@@ -277,10 +209,12 @@ class DatabaseFormat:
         unique_values: pd.DataFrame
             Unique values.
         """
+        if columns is None:
+            columns = dataframe.columns[~dataframe.isna().all()]
         dataframe = dataframe.drop_duplicates()
 
         concatenated_df = None
-        for column in dataframe.columns:
+        for column in columns:
             df = dataframe[column].str.split(pat=self.separator, regex=False, expand=True)
             df = df.melt(var_name=f"{column}_variable", value_name = column)
 
@@ -290,7 +224,7 @@ class DatabaseFormat:
                 concatenated_df = pd.concat([concatenated_df, df], axis=1)
 
         unique_values = (
-            concatenated_df
+            concatenated_df[columns]
             .drop_duplicates()
             .replace("", np.nan)
             .dropna(how="any")
