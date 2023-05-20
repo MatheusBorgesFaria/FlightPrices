@@ -169,7 +169,7 @@ class DatabaseFormat:
             create_table_key = False
         
         # Post-processing of tables 
-        next_search_id = qt.get_max_database_search_id() + 1
+        next_search_id = qt.get_max_search_id() + 1
         for table_key, table in tables.items():
             tables[table_key] = pd.concat(table, ignore_index=True)
             
