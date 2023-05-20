@@ -6,8 +6,10 @@ import reverse_geocoder as rg  # ADICIONAR NO REQUIREMENTS
 from joblib import Parallel, delayed
 
 sys.path.append("../odbc")
+import query_tools as qt
 from connection import load_conn
 
+from pdb import set_trace
 
 class DatabaseFormat:
     """Transform structured raw data into database format.
@@ -35,16 +37,16 @@ class DatabaseFormat:
         self.parquet_paths = parquet_paths
         self.separator = separator
         self.conn = load_conn()
-        
+        self.unique_value_tables = ["airport", "airline", "equipment"]
         self.tables_columns = {
-            "search": ["search_Id", "search_time", "operational_search_time", "flight_day",
-                      "origin_code", "destination_code", "arrivalAirportCode"],
-            "flight": ["search_Id", "legId", "travelDuration", "duration", "durationInSeconds",
+            "search": ["search_id", "search_time", "operational_search_time", "flight_day",
+                       "origin_code", "destination_code"],
+            "flight": ["search_id", "legId", "travelDuration", "duration", "durationInSeconds",
                        "elapsedDays", "isNonStop", "departureTimeRaw",
                        "departureTimeZoneOffsetSeconds", "arrivalTimeRaw",
                        "arrivalTimeZoneOffsetSeconds", "flightNumber", "stops", "airlineCode",
-                       "equipmentCode"],
-            "fare": ["search_Id", "legId", "fareBasisCode", "isBasicEconomy", "isRefundable",
+                       "equipmentCode", "arrivalAirportCode", "departureAirportCode"],
+            "fare": ["search_id", "legId", "fareBasisCode", "isBasicEconomy", "isRefundable",
                      "isFreeChangeAvailable", "taxes", "fees", "showFees",
                      "currency", "baseFare", "totalFare", "numberOfTickets",
                      "freeCancellationBy", "hasSeatMap", "providerCode", "seatsRemaining"],
@@ -69,7 +71,13 @@ class DatabaseFormat:
         tables: dict[pd.DataFrame]
             Dictionary with all tables in the database format.
         """
-        return
+        tables_list = Parallel(n_jobs=n_jobs, prefer="threads", verbose=1)(
+            [delayed(self._transform_parquet)(parquet_path)
+             for parquet_path in self.parquet_paths]
+        )
+        
+        tables = self._post_processing(tables_list)
+        return tables
         
     def _transform_parquet(self, parquet_path):
         """Transform structured raw data from 1 parquet into database format.
@@ -86,7 +94,7 @@ class DatabaseFormat:
         """
         data = pd.read_parquet(parquet_path)
         data.reset_index(drop=True, inplace=True)
-        data.reset_index(names="search_Id", inplace=True)
+        data.reset_index(names="search_id", inplace=True)
         tables = {}
         tables["search"] = self._transform_search_data(data)
         tables["flight"] = self._transform_flight_data(data)
@@ -109,7 +117,7 @@ class DatabaseFormat:
         search_data: pd.DataFrame
             Data in search table format.
         """
-        search_data = None
+        search_data = data[self.tables_columns["search"]]
         return search_data
     
     def _transform_flight_data(self, data):
@@ -125,7 +133,7 @@ class DatabaseFormat:
         flight_data: pd.DataFrame
             Data in flight table format.
         """
-        flight_data = None
+        flight_data = data[self.tables_columns["flight"]]
         return flight_data
     
     def _transform_fare_data(self, data):
@@ -138,11 +146,11 @@ class DatabaseFormat:
 
         Return
         ------
-        airport_data: pd.DataFrame
-            Data in airport table format.
+        fare_data: pd.DataFrame
+            Data in fare table format.
         """
-        airport_data = None
-        return airport_data
+        fare_data = data[self.tables_columns["fare"]]
+        return fare_data
     
     def _transform_airport_data(self, data):
         """Transform structured raw data into airport table format.
@@ -170,18 +178,12 @@ class DatabaseFormat:
         data_origin = data[origin_column].rename(columns=origin_rename)
         data_destination = data[destination_column].rename(columns=destination_rename)
 
-        dataframe = pd.concat([data_origin, data_destination])
-        
+        airport_data = pd.concat([data_origin, data_destination])
+        airport_data = airport_data.drop_duplicates()
+
         columns = self.tables_columns["airport"].copy()
         columns.remove('city')
-        airport_data = self._get_unique_values(dataframe, columns)
-        
-        coordinates = list(
-            zip(airport_data["AirportLatitude"], airport_data["AirportLongitude"])
-        )
-        citys = self.get_city_from_coordinates(coordinates)
-        airport_data["city"] = citys
-        return airport_data
+        return airport_data[columns]
     
     def _transform_airline_data(self, data):
         """Transform structured raw data into airline table format.
@@ -197,7 +199,7 @@ class DatabaseFormat:
             Data in airline table format.
         """
         columns = self.tables_columns["airline"].copy()
-        airline_data = self._get_unique_values(data[columns], columns)
+        airline_data = data[columns].drop_duplicates()
         return airline_data
     
     def _transform_equipment_data(self, data):
@@ -214,8 +216,50 @@ class DatabaseFormat:
             Data in equipment table format.
         """
         columns = self.tables_columns["equipment"].copy()
-        equipment_data = self._get_unique_values(data[columns], columns)
+        equipment_data = data[columns].drop_duplicates()
         return equipment_data
+    
+    def _post_processing(self, tables_list):
+        # Create only one table dict
+        create_table_key = True
+        tables = {}
+        for partial_tables in tables_list:
+            for table_key, table in partial_tables.items():
+                if create_table_key:
+                    tables[table_key] = [table]
+                else:
+                    tables[table_key].append(table)
+            create_table_key = False
+        
+        # Post-processing of tables 
+        next_search_id = qt.get_max_database_search_id() + 1
+        for table_key, table in tables.items():
+            tables[table_key] = pd.concat(table, ignore_index=True)
+            
+            # Fix search_id column
+            if "search_id" in self.tables_columns[table_key]:
+                end_search_id = next_search_id + len(tables[table_key])
+                tables[table_key]["search_id"] = range(next_search_id, end_search_id)
+            
+            # Get unique values
+            if table_key in self.unique_value_tables:
+                database_table = qt.get_table(table_key)
+                tables[table_key] = pd.concat([tables[table_key], database_table])
+                tables[table_key] = self._get_unique_values(
+                    tables[table_key], tables[table_key].columns
+                )
+                
+                # Add city column on airport table
+                if "airport" in table_key:
+                    # TEM ERRO AQUI
+                    set_trace()
+                    coordinates = list(
+                        zip(tables[table_key]["AirportLatitude"],
+                            tables[table_key]["AirportLongitude"])
+                    )
+                    airport_data["city"] = self.get_city_from_coordinates(coordinates)                    
+            
+        return tables
 
     def _get_unique_values(self, dataframe, columns):
         """Gets the unique values of a detaframe considering flight leg.
@@ -233,8 +277,10 @@ class DatabaseFormat:
         unique_values: pd.DataFrame
             Unique values.
         """
+        dataframe = dataframe.drop_duplicates()
+
         concatenated_df = None
-        for column in columns:
+        for column in dataframe.columns:
             df = dataframe[column].str.split(pat=self.separator, regex=False, expand=True)
             df = df.melt(var_name=f"{column}_variable", value_name = column)
 
@@ -244,7 +290,7 @@ class DatabaseFormat:
                 concatenated_df = pd.concat([concatenated_df, df], axis=1)
 
         unique_values = (
-            concatenated_df[columns]
+            concatenated_df
             .drop_duplicates()
             .replace("", np.nan)
             .dropna(how="any")
@@ -268,3 +314,4 @@ class DatabaseFormat:
         results = rg.search(coordinates)
         citys_list = [city.get("name") for city in results]
         return citys_list
+    
