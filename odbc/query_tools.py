@@ -1,21 +1,7 @@
 import pandas as pd
-from functools import wraps
-from warnings import filterwarnings
-
 
 from connection import load_conn
-
-
-def filter_warnings(func):
-
-    @wraps(func)
-    def wrapper(*args, **kwargs):
-        filterwarnings("ignore")
-        result = func(*args, **kwargs)
-        filterwarnings("default")
-        return result
-
-    return wrapper
+from filter_warnings import filter_warnings
 
 
 @filter_warnings
@@ -41,7 +27,7 @@ def get_table(table, condition=""):
             {condition}
         """
     with load_conn() as conn:
-            table = pd.read_sql(query, conn)
+        table = pd.read_sql(query, conn)
     return table
 
 
