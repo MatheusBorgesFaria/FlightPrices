@@ -1,8 +1,24 @@
 import pandas as pd
+from functools import wraps
+from warnings import filterwarnings
+
 
 from connection import load_conn
 
 
+def filter_warnings(func):
+
+    @wraps(func)
+    def wrapper(*args, **kwargs):
+        filterwarnings("ignore")
+        result = func(*args, **kwargs)
+        filterwarnings("default")
+        return result
+
+    return wrapper
+
+
+@filter_warnings
 def get_table(table, condition=""):
     """Get any table on database.
     
@@ -29,6 +45,7 @@ def get_table(table, condition=""):
     return table
 
 
+@filter_warnings
 def get_max_search_id(table="search"):
     """Get max search_id.
     
@@ -42,11 +59,11 @@ def get_max_search_id(table="search"):
     max_search_id: int
         Maximum existing search_id in the table. 
     """
-        query = f"""
-            SELECT COALESCE(max("searchId"), -1) AS max_search_id
-            FROM flight.{table}
-        """
-        with load_conn() as conn:
-            max_search_id = pd.read_sql(query, conn)
-        max_search_id = max_search_id.loc[0, "max_search_id"]
-        return max_search_id
+    query = f"""
+        SELECT COALESCE(max("searchId"), -1) AS max_search_id
+        FROM flight.{table}
+    """
+    with load_conn() as conn:
+        max_search_id = pd.read_sql(query, conn)
+    max_search_id = max_search_id.loc[0, "max_search_id"]
+    return max_search_id
