@@ -6,6 +6,7 @@ from geopy.geocoders import Nominatim
 from joblib import Parallel, delayed
 
 sys.path.append("../odbc")
+import database_tools as dt
 import query_tools as qt
 from connection import load_conn
 
@@ -54,28 +55,38 @@ class DatabaseFormat:
             "airline": ["airlineCode", "airlineName", "externalAirlineCode", "operatingAirlineName"],
             "equipment": ["equipmentCode", "equipmentDescription"],
         }
-    
-    def transform_all_parquets(self, n_jobs=-1):
+
+    def transform_all_parquets(self, n_jobs=-1, inset_on_database=False):
         """Transform structured raw data from all parquet into database format
 
         Parameters
         ----------
         n_jobs: int (default=-1, all cores)
             Number of colors.
-
+        
+        push_in_database: bool (default=False)
+            If True push data in database.
         Return
         ------
         tables: dict[pd.DataFrame]
             Dictionary with all tables in the database format.
         """
-        tables_list = Parallel(n_jobs=n_jobs, prefer="threads", verbose=1)(
+        tables_list = Parallel(n_jobs=n_jobs, prefer="processes", verbose=1)(
             [delayed(self._transform_parquet)(parquet_path)
              for parquet_path in self.parquet_paths]
         )
         
         tables = self._post_processing(tables_list)
-        return tables
         
+        if inset_on_database:
+            print("Saving data...")
+            for table_name, table in tables.items():
+                print(f"Saving {table_name} table... {len(table)} lines")
+                if_exists = "replace" if table_name in self.unique_value_tables else "append"
+                dt.insert_database(table, table_name, if_exists=if_exists)
+        
+        return tables
+
     def _transform_parquet(self, parquet_path):
         """Transform structured raw data from 1 parquet into database format.
 
@@ -111,7 +122,7 @@ class DatabaseFormat:
             if table_name in self.unique_value_tables:                
                 tables[table_name] = tables[table_name].drop_duplicates()
         return tables
-    
+
     def _transform_airport_data(self, data):
         """Transform structured raw data into airport table format.
 
@@ -143,7 +154,7 @@ class DatabaseFormat:
         columns = self.tables_columns["airport"].copy()
         columns.remove('city')
         return airport_data[columns]
-    
+
     def _post_processing(self, tables_list):
         """Post-process the data from the parquets. 
 
@@ -157,6 +168,8 @@ class DatabaseFormat:
         tables: dict[pd.DataFrame]
              Dictionary with all tables in the database format.
         """
+        print("Post-processing the data...")
+        print("Create only one table dict")
         # Create only one table dict
         create_table_key = True
         tables = {}
@@ -168,6 +181,7 @@ class DatabaseFormat:
                     tables[table_key].append(table)
             create_table_key = False
         
+        print("Post-processing of tables: fix search_id column; get unique values;")
         # Post-processing of tables 
         next_search_id = qt.get_max_search_id() + 1
         for table_key, table in tables.items():
@@ -183,7 +197,8 @@ class DatabaseFormat:
                 database_table = qt.get_table(table_key)
                 tables[table_key] = pd.concat([tables[table_key], database_table])
                 tables[table_key] = self._get_unique_values(tables[table_key])
-                
+        
+        print("Adding city column on airport table")
         # Add city column on airport table
         coordinates = list(
             zip(tables["airport"]["airportLatitude"],
@@ -253,4 +268,3 @@ class DatabaseFormat:
             return city
         citys_list = [get_city_name(coordinate) for coordinate in coordinates]
         return citys_list
-    
