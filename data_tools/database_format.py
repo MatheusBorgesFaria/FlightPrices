@@ -2,7 +2,7 @@ import sys
 
 import numpy as np
 import pandas as pd
-import reverse_geocoder as rg
+from geopy.geocoders import Nominatim
 from joblib import Parallel, delayed
 
 sys.path.append("../odbc")
@@ -245,7 +245,12 @@ class DatabaseFormat:
         citys_list: list
             A list of city names.
         """
-        results = rg.search(coordinates)
-        citys_list = [city.get("name") for city in results]
+        geolocator = Nominatim(user_agent="my-app")
+        def get_city_name(coordinate):
+            location = geolocator.reverse(coordinate, exactly_one=True)
+            address = location.raw['address']
+            city = address.get('city')
+            return city
+        citys_list = [get_city_name(coordinate) for coordinate in coordinates]
         return citys_list
     
