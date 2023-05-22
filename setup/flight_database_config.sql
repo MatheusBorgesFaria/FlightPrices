@@ -1,7 +1,7 @@
 -- DROP DATABASE flight
 -- Create database if don't exist
 SELECT 'CREATE DATABASE flight' 
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'flight')\gexec
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'flightflight')\gexec
 
 -- Connect to database 
 \c flight
@@ -67,7 +67,7 @@ CREATE TABLE IF NOT EXISTS flight.airport (
     "airportCode" CHAR(3) PRIMARY KEY,
     "airportLatitude" DECIMAL(10,6) NOT NULL,
     "airportLongitude" DECIMAL(10,6) NOT NULL,
-    "city" VARCHAR(100) NOT NULL
+    "city" VARCHAR(100)
 );
 
 CREATE TABLE IF NOT EXISTS flight.airline (
