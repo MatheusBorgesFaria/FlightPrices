@@ -1,7 +1,7 @@
 -- DROP DATABASE flight
 -- Create database if don't exist
 SELECT 'CREATE DATABASE flight' 
-WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'flightflight')\gexec
+WHERE NOT EXISTS (SELECT FROM pg_database WHERE datname = 'flight')\gexec
 
 -- Connect to database 
 \c flight
@@ -14,7 +14,8 @@ CREATE TABLE IF NOT EXISTS flight.search (
     "operationalSearchTime" TIMESTAMP NOT NULL,
     "flightDay" DATE NOT NULL,
     "originCode" CHAR(3) NOT NULL,
-    "destinationCode" CHAR(3) NOT NULL
+    "destinationCode" CHAR(3) NOT NULL,
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS flight.flight (
@@ -39,6 +40,7 @@ CREATE TABLE IF NOT EXISTS flight.flight (
     "departureAirportLongitude" VARCHAR NOT NULL,
     "arrivalAirportCode" VARCHAR NOT NULL,
     "departureAirportCode" VARCHAR NOT NULL,
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("searchId") REFERENCES flight.search("searchId")
 );
 
@@ -60,6 +62,7 @@ CREATE TABLE IF NOT EXISTS flight.fare (
     "hasSeatMap" VARCHAR NOT NULL,
     "providerCode" VARCHAR NOT NULL,
     "seatsRemaining" INTEGER NOT NULL,
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("searchId") REFERENCES flight.search("searchId")
 );
 
@@ -67,19 +70,22 @@ CREATE TABLE IF NOT EXISTS flight.airport (
     "airportCode" CHAR(3) PRIMARY KEY,
     "airportLatitude" DECIMAL(10,6) NOT NULL,
     "airportLongitude" DECIMAL(10,6) NOT NULL,
-    "city" VARCHAR(100)
+    "city" VARCHAR(100),
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS flight.airline (
     "airlineCode" CHAR(2) PRIMARY KEY,
     "airlineName" VARCHAR(100) NOT NULL,
     "externalAirlineCode" VARCHAR(2),
-    "operatingAirlineName" VARCHAR(100)
+    "operatingAirlineName" VARCHAR(100),
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 CREATE TABLE IF NOT EXISTS flight.equipment (
     "equipmentCode" CHAR(3) PRIMARY KEY,
-    "equipmentDescription" VARCHAR(100) NOT NULL
+    "equipmentDescription" VARCHAR(100) NOT NULL,
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
 
