@@ -6,7 +6,7 @@ from filter_warnings import filter_warnings
 
 @filter_warnings
 def insert_database(dataframe, table_name, schema="flight",
-                    if_exists="append", chunksize=1_000_000,
+                    if_exists="append", chunksize=200_000,
                     method="multi"):
     """Insert dataframe on database.
     
@@ -40,3 +40,23 @@ def insert_database(dataframe, table_name, schema="flight",
     dataframe.to_sql(name=table_name, con=engine, schema=schema, 
                      if_exists=if_exists, chunksize=chunksize,
                      method=method, index=False) 
+
+
+@filter_warnings
+def truncate_cascade_table(table_name, schema="flight"):
+    """Truncate table using cascade method.
+    
+    Parameters
+    ----------
+    table_name: str
+        The name of the database table.
+    
+    schema: str (default="flight")
+        The name of the database schema.
+    """
+    conn = load_conn()
+    curr = conn.cursor()
+    curr.execute(f"TRUNCATE TABLE {schema}.{table_name} CASCADE")
+    conn.commit()
+    curr.close()
+    conn.close()
