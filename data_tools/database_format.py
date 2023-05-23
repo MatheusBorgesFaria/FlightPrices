@@ -2,6 +2,7 @@ import sys
 
 import numpy as np
 import pandas as pd
+from time import time
 from geopy.geocoders import Nominatim
 from joblib import Parallel, delayed
 
@@ -81,9 +82,12 @@ class DatabaseFormat:
         if inset_on_database:
             print("Saving data...")
             for table_name, table in tables.items():
-                print(f"Saving {table_name} table... {len(table)} lines")
+                start_time = time()
                 if_exists = "replace" if table_name in self.unique_value_tables else "append"
+                print(f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}")
                 dt.insert_database(table, table_name, if_exists=if_exists)
+                end_time = time()
+                print(f"Done in {(end_time - start_time)/60} min!")
         
         return tables
 
