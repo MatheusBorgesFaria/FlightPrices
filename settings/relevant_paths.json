@@ -1,0 +1,7 @@
+{
+    "data_scraper": "/home/mborges/data",
+    "logs_scraper": "/home/mborges/logs",
+    "structured_data": "/home/mborges/structured_data",
+    "structured_data_logs": "/home/mborges/structured_data/logs",
+    "database_format_not_inserted": "/home/mborges/database_format_not_inserted"
+}
