@@ -1,8 +1,11 @@
+import json
 import sys
+from datetime import datetime
+from os.path import join
+from time import time
 
 import numpy as np
 import pandas as pd
-from time import time
 from geopy.geocoders import Nominatim
 from joblib import Parallel, delayed
 
@@ -87,9 +90,11 @@ class DatabaseFormat:
                 start_time = time()
                 if_exists = "replace" if table_name in self.unique_value_tables else "append"
                 print(f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}")
-                dt.insert_database_parallel(table, table_name, if_exists=if_exists)
+                dataframe_not_inserted = dt.insert_database_parallel(table, table_name, if_exists=if_exists)
                 end_time = time()
                 print(f"Done in {(end_time - start_time)/60} min!")
+                
+                self._save_dataframe_not_inserted(dataframe_not_inserted, table_name)
         
         return tables
 
@@ -274,3 +279,15 @@ class DatabaseFormat:
             return city
         citys_list = [get_city_name(coordinate) for coordinate in coordinates]
         return citys_list
+    
+    def _save_dataframe_not_inserted(self, dataframe_not_inserted, table_name):
+        """Saves data that could not be inserted to database."""
+        if not dataframe_not_inserted.empty:
+            print(f"Saving dataframe_not_inserted, {len(dataframe_not_inserted)} "
+                  f"lines, table = {table_name}")
+            with open("../settings/relevant_paths.json", 'r') as f:
+                relevant_paths = json.load(f)
+            file_name = (table_name + "_" + datetime.now().strftime("%Y%m%d_%Hh_%mmin")
+                         + ".parquet")
+            save_path = join(relevant_paths["database_format_not_inserted"], file_name)
+            dataframe_not_inserted.to_parquet(save_path)

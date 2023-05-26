@@ -108,19 +108,20 @@ def insert_database(dataframe, table_name, schema="flight",
     dataframe_not_inserted: pd.DataFrame
         Dataframe that could not be inserted into the database.
     """
-    counter = 0
-    while max_n_attempts > counter:
+    counter = 1
+    while max_n_attempts >= counter:
         try:
             engine = load_conn(connection_type="engine")
             dataframe.to_sql(name=table_name, con=engine, schema=schema, 
                              if_exists=if_exists, chunksize=chunksize,
                              method=method, index=False)
             dataframe_not_inserted = pd.DataFrame()
+            break
 
         except Exception as error:
             log = f":" if counter == 0 else "mensage was omitted."
             print(f"ATTEMPT NUMBER {counter}, error" + log)
-            if counter == 0:
+            if counter == 1:
                 print(error)
             dataframe_not_inserted = dataframe
         
