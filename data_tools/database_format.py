@@ -56,6 +56,7 @@ class DatabaseFormat:
             "airline": ["airlineCode", "airlineName", "externalAirlineCode", "operatingAirlineName"],
             "equipment": ["equipmentCode", "equipmentDescription"],
         }
+        
 
     def transform_all_parquets(self, n_jobs=-1, inset_on_database=False):
         """Transform structured raw data from all parquet into database format
@@ -67,6 +68,7 @@ class DatabaseFormat:
         
         push_in_database: bool (default=False)
             If True push data in database.
+
         Return
         ------
         tables: dict[pd.DataFrame]
@@ -85,7 +87,7 @@ class DatabaseFormat:
                 start_time = time()
                 if_exists = "replace" if table_name in self.unique_value_tables else "append"
                 print(f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}")
-                dt.insert_database(table, table_name, if_exists=if_exists)
+                dt.insert_database_parallel(table, table_name, if_exists=if_exists)
                 end_time = time()
                 print(f"Done in {(end_time - start_time)/60} min!")
         
