@@ -10,7 +10,9 @@ from filter_warnings import filter_warnings
 @filter_warnings
 def insert_database_parallel(dataframe, table_name, schema="flight",
                              if_exists="append", chunksize=20_000,
-                             method="multi", n_jobs=None, n_dataframe_divisions=None):
+                             method="multi", n_jobs=None,
+                             n_dataframe_divisions=None, 
+                             max_n_attempts=5):
     """Insert dataframe on database.
     
     Parameters
@@ -39,6 +41,8 @@ def insert_database_parallel(dataframe, table_name, schema="flight",
         Number of times the dataframe is divided,
         each partition will be computed by a "processes".
         If it is None, n_dataframe_divisions = len(dataframe) // chunksize
+    max_n_attempts: int (default=5)
+        Maximum number of attempts to insert data into the database.
     
     Return
     ------
@@ -59,7 +63,8 @@ def insert_database_parallel(dataframe, table_name, schema="flight",
             schema=schema, 
             if_exists=if_exists,
             chunksize=chunksize,
-            method=method
+            method=method,
+            max_n_attempts=max_n_attempts
          )
          for dataframe_part in np.array_split(dataframe, n_dataframe_divisions)
         ]
@@ -72,7 +77,7 @@ def insert_database_parallel(dataframe, table_name, schema="flight",
 @filter_warnings
 def insert_database(dataframe, table_name, schema="flight",
                     if_exists="append", chunksize=20_000,
-                    method="multi"):
+                    method="multi", max_n_attempts=5):
     """Insert dataframe on database.
     
     Parameters
@@ -95,23 +100,31 @@ def insert_database(dataframe, table_name, schema="flight",
             None : Uses standard SQL INSERT clause (one per row).
             multi: Pass multiple values in a single INSERT clause.
             callable with signature (pd_table, conn, keys, data_iter).
+     max_n_attempts: int (default=5)
+        Maximum number of attempts to insert data into the database.
     
     Return
     ------
     dataframe_not_inserted: pd.DataFrame
         Dataframe that could not be inserted into the database.
     """
-    try:
-        engine = load_conn(connection_type="engine")
-        dataframe.to_sql(name=table_name, con=engine, schema=schema, 
-                         if_exists=if_exists, chunksize=chunksize,
-                         method=method, index=False)
-        dataframe_not_inserted = pd.DataFrame()
+    counter = 0
+    while max_n_attempts > counter:
+        try:
+            engine = load_conn(connection_type="engine")
+            dataframe.to_sql(name=table_name, con=engine, schema=schema, 
+                             if_exists=if_exists, chunksize=chunksize,
+                             method=method, index=False)
+            dataframe_not_inserted = pd.DataFrame()
 
-    except Exception as erro:
-        print(f"Error: {erro}")
-        dataframe_not_inserted = dataframe
-
+        except Exception as error:
+            log = f":" if counter == 0 else "mensage was omitted."
+            print(f"ATTEMPT NUMBER {counter}, error" + log)
+            if counter == 0:
+                print(error)
+            dataframe_not_inserted = dataframe
+        
+        counter += 1
     return dataframe_not_inserted
         
         
