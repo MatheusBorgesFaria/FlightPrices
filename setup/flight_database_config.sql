@@ -60,7 +60,7 @@ CREATE TABLE IF NOT EXISTS flight.fare (
     "numberOfTickets" INTEGER NOT NULL,
     "freeCancellationBy" TIMESTAMP,
     "hasSeatMap" VARCHAR NOT NULL,
-    "providerCode" VARCHAR NOT NULL,
+    "providerCode" VARCHAR,
     "seatsRemaining" INTEGER NOT NULL,
     "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY ("searchId") REFERENCES flight.search("searchId")
