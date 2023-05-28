@@ -7,7 +7,6 @@ import pandas as pd
 from flight_extractor import FlightExtractor
 from tqdm import tqdm
 
-
 start_date = (datetime.now() - timedelta(days=1)).date()
 end_date = start_date
 # start_date = datetime.strptime("2023-05-05", "%Y-%m-%d")
