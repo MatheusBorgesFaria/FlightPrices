@@ -147,3 +147,24 @@ def truncate_cascade_table(table_name, schema="flight"):
     conn.commit()
     curr.close()
     conn.close()
+    return
+
+
+def reindex(table_name, schema="flight"):
+    """Reindex the table.
+    
+    Parameters
+    ----------
+    table_name: str
+        The name of the database table.
+    
+    schema: str (default="flight")
+        The name of the database schema.
+    """
+    conn = load_conn()
+    cursor = conn.cursor()
+    cursor.execute(f"REINDEX TABLE {schema}.{table_name};")
+    conn.commit()
+    cursor.close()
+    conn.close()
+    return
