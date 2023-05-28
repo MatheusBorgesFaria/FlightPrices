@@ -88,6 +88,10 @@ CREATE TABLE IF NOT EXISTS flight.equipment (
     "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE IF NOT EXISTS flight.data_upload (
+    "filePath" VARCHAR NOT NULL,
+    "insertionTime" TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- Show tables of schema flight
 \dt flight.*
