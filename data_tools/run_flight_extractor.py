@@ -4,6 +4,7 @@ from glob import glob
 from os.path import join
 
 import pandas as pd
+from file_transfer import structured_data_transfer
 from flight_extractor import FlightExtractor
 from tqdm import tqdm
 
@@ -37,10 +38,15 @@ for day_path in tqdm(days_path_list):
         extractor = FlightExtractor(filenames_all)
         structured_data, error_log_df = extractor.structure_all_jsons(n_jobs=-1)
 
-        structured_data.to_parquet(join(path_to_save, day_str + "_structured_data.parquet"))
+        structured_data_path = join(path_to_save, day_str + "_structured_data.parquet")
+        structured_data.to_parquet(structured_data_path)
         if not error_log_df.empty:
-            error_log_df.to_csv(join(path_to_save, "logs",
-                                     day_str + "_error_log.csv"),
-                                index=False)
+            error_log_path = join(path_to_save, "logs", day_str + "_error_log.csv")
+            error_log_df.to_csv(error_log_path, index=False)
         del structured_data
         del error_log_df
+
+        try:
+            structured_data_transfer()
+        except Exception as e:
+            print(f"Error: {str(e)}")
