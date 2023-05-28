@@ -99,7 +99,7 @@ class DatabaseFormat:
                 
                 self.save_dataframe_not_inserted(dataframe_not_inserted, table_name)
 
-            dataframe_not_inserted = insert_data_upload_table(self.parquet_paths)
+            dataframe_not_inserted = self.insert_data_upload_table(self.parquet_paths)
             self.save_dataframe_not_inserted(dataframe_not_inserted, "data_upload")
         
         return tables
