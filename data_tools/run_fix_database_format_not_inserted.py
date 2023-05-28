@@ -1,8 +1,8 @@
+import os
 import re
 import sys
 import pandas as pd
 from glob import glob
-from os
 from pprint import pprint
 from time import time
 
@@ -13,6 +13,7 @@ from tools import get_relevant_path
 
 sys.path.append("../odbc")
 import database_tools as dt
+import query_tools as qt
 
 
 def get_table_name(_str):
@@ -33,17 +34,25 @@ pprint(parquet_paths)
 
 for parquet_path in parquet_paths:
     print(f"Path: {parquet_path}")
-        
-    time1 = time()
-    
+
+    time_begin = time()
+
     table_name = get_table_name(parquet_path)
     table = pd.read_parquet(parquet_path)
 
     database_format = DatabaseFormat(parquet_paths)
-    if_exists = "replace" if table_name in database_format.unique_value_tables else "append"
+
+    if_exists = "append"
+    if table_name in database_format.unique_value_tables:
+        if_exists = "replace"
+        current_table = qt.get_table(table_name)
+        table = pd.concat([table, current_table])
+        table = table.drop_duplicates(ignore_index=True)
+
     dataframe_not_inserted = dt.insert_database_parallel(table, table_name, if_exists=if_exists)
     database_format.save_dataframe_not_inserted(dataframe_not_inserted, table_name)
-    
+
     os.remove(parquet_path)
-    time2 = time()
-    print(f"Total time: {(time2 - time1)/60} min table_name = {table_name}, shape = {table.shape} ") 
+
+    time_end = time()
+    print(f"Total time: {(time_end - time_begin)/60} min table_name = {table_name}, shape = {table.shape} ") 
