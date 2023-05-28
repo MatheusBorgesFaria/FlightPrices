@@ -98,6 +98,9 @@ class DatabaseFormat:
                 print(f"Done in {(end_time - start_time)/60} min!")
                 
                 self.save_dataframe_not_inserted(dataframe_not_inserted, table_name)
+
+            dataframe_not_inserted = insert_data_upload_table(self.parquet_paths)
+            self.save_dataframe_not_inserted(dataframe_not_inserted, "data_upload")
         
         return tables
 
@@ -285,7 +288,19 @@ class DatabaseFormat:
 
     @staticmethod
     def save_dataframe_not_inserted(dataframe_not_inserted, table_name):
-        """Saves data that could not be inserted to database."""
+        """Saves data that could not be inserted to database.
+        
+        The dataframe_not_inserted will be saved in the path returned by the 
+        utils.tools.get_relevant_path("database_format_not_inserted") function.
+        
+        Parameters
+        ----------
+        dataframe_not_inserted: pd.DataFrame
+            Datarframe that could not be inserted to database.
+        
+        table_name: str
+            The table name
+        """
         if not dataframe_not_inserted.empty:
             print(f"Saving dataframe_not_inserted, {len(dataframe_not_inserted)} "
                   f"lines, table = {table_name}")
@@ -294,3 +309,22 @@ class DatabaseFormat:
                          + ".parquet")
             save_path = join(get_relevant_path("database_format_not_inserted"), file_name)
             dataframe_not_inserted.to_parquet(save_path)
+    
+    @staticmethod
+    def insert_data_upload_table(file_paths):
+        """Prepare and insert the data into the data_upload table.
+        
+        Parameters
+        ----------
+        file_paths: list
+            List of file paths
+        
+        Return
+        ------
+        dataframe_not_inserted: pd.DataFrame
+            Datarframe that could not be inserted to database.
+        """
+        assert isinstance(file_paths, list), "file_paths must be list."
+        data_upload = pd.DataFrame({"filePath": file_paths})
+        dataframe_not_inserted = dt.insert_database_parallel(data_upload, "data_upload")
+        return dataframe_not_inserted
