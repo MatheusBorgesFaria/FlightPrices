@@ -1,7 +1,6 @@
 import json
 from os.path import join
 
-
 PATH_TO_RELEVANT_PATHS = join("..", "settings","relevant_paths.json")
 PATH_TO_STRUTURED_DATA_TRANSFER = join("..", "settings","structured_data_transfer_credentials.json")
 
