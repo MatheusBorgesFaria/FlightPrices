@@ -1,0 +1,8 @@
+{
+    "host": "localhost",
+    "port": 5432,
+    "database": "flight_dev",
+    "user": "***",
+    "password": "***",
+    "schema":"flight"
+}
