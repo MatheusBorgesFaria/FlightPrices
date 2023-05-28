@@ -14,6 +14,9 @@ import database_tools as dt
 import query_tools as qt
 from connection import load_conn
 
+sys.path.append("../utils")
+from tools import get_relevant_path
+
 
 class DatabaseFormat:
     """Transform structured raw data into database format.
@@ -94,7 +97,7 @@ class DatabaseFormat:
                 end_time = time()
                 print(f"Done in {(end_time - start_time)/60} min!")
                 
-                self._save_dataframe_not_inserted(dataframe_not_inserted, table_name)
+                self.save_dataframe_not_inserted(dataframe_not_inserted, table_name)
         
         return tables
 
@@ -279,15 +282,15 @@ class DatabaseFormat:
             return city
         citys_list = [get_city_name(coordinate) for coordinate in coordinates]
         return citys_list
-    
-    def _save_dataframe_not_inserted(self, dataframe_not_inserted, table_name):
+
+    @staticmethod
+    def save_dataframe_not_inserted(dataframe_not_inserted, table_name):
         """Saves data that could not be inserted to database."""
         if not dataframe_not_inserted.empty:
             print(f"Saving dataframe_not_inserted, {len(dataframe_not_inserted)} "
                   f"lines, table = {table_name}")
-            with open("../settings/relevant_paths.json", 'r') as f:
-                relevant_paths = json.load(f)
+             
             file_name = (table_name + "_" + datetime.now().strftime("%Y%m%d_%Hh_%mmin")
                          + ".parquet")
-            save_path = join(relevant_paths["database_format_not_inserted"], file_name)
+            save_path = join(get_relevant_path("database_format_not_inserted"), file_name)
             dataframe_not_inserted.to_parquet(save_path)
