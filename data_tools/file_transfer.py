@@ -90,16 +90,18 @@ def structured_data_transfer(paths_to_transfer=None, deleting_local_file=True):
     ip = get_public_ip()
     structured_data_destination = tools.get_relevant_path("structured_data_destination")
     structured_data_transfer_credentials = tools.get_structured_data_transfer_credentials()    
+    destination_ip = structured_data_transfer_credentials.get("host", "")
 
-    for local_file_path in paths_to_transfer:
-        file_name = os.path.basename(local_file_path)
+    if ip != destination_ip:
+        for local_file_path in paths_to_transfer:
+            file_name = os.path.basename(local_file_path)
 
-        print(f"Moving the file {file_name}...")
-        destination_path = os.path.join(
-            structured_data_destination, (f"ip={ip}_" + file_name)
-        )
-        file_transfer(local_file=local_file_path,
-                      destination_path=destination_path,
-                      **structured_data_transfer_credentials,
-                      deleting_local_file=deleting_local_file)
+            print(f"Moving the file {file_name}...")
+            destination_path = os.path.join(
+                structured_data_destination, (f"ip={ip}_" + file_name)
+            )
+            file_transfer(local_file=local_file_path,
+                          destination_path=destination_path,
+                          **structured_data_transfer_credentials,
+                          deleting_local_file=deleting_local_file)
     return
