@@ -22,7 +22,9 @@ sudo systemctl start postgresql
 # Configure PostgreSQL to start automatically with the system
 sudo systemctl enable postgresql
 
-# Create a database named flight
+# Create a database
 sudo -i -u postgres psql < flight_database_config.sql
+sudo -i -u postgres psql < create_index.sql 
+
 # No user and password allowing connection to the database were created automatically.
 # Best practice is to do this manually.
