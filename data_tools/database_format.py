@@ -21,13 +21,14 @@ from tools import get_relevant_path
 class DatabaseFormat:
     """Transform structured raw data into database format.
     
-    The database has 6 tables in schema flight:
+    The database has 7 tables in schema flight:
     - search
     - flight
     - fare
     - airport
     - airline
     - equipment
+    - data_upload
     """
 
     def __init__(self, parquet_paths, separator="||"):

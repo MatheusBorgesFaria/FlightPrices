@@ -4,14 +4,13 @@ from glob import glob
 from os.path import join
 
 import pandas as pd
-from file_transfer import structured_data_transfer
 from flight_extractor import FlightExtractor
 from tqdm import tqdm
 
 start_date = (datetime.now() - timedelta(days=1)).date()
 end_date = start_date
-# start_date = datetime.strptime("2023-05-05", "%Y-%m-%d")
-# end_date = datetime.now()
+# start_date = datetime.strptime("2023-05-05", "%Y-%m-%d").date()
+# end_date = datetime.now().date()
 
 path_to_save = "/home/mborges/structured_data"
 days_path_list = glob('/home/mborges/data/*')
@@ -45,8 +44,3 @@ for day_path in tqdm(days_path_list):
             error_log_df.to_csv(error_log_path, index=False)
         del structured_data
         del error_log_df
-
-        try:
-            structured_data_transfer()
-        except Exception as e:
-            print(f"Error: {str(e)}")
