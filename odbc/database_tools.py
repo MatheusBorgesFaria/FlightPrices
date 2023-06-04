@@ -277,3 +277,63 @@ def delete_rows_by_insertionTime(date, table_name, schema="flight"):
         cursor.close()
         conn.close()
     return
+
+
+def create_table_index(table, scheama="flight"):
+    """Create indexes for a specified table.
+
+    This function creates indexes for the specified table based on a pre-defined configuration.
+
+    Parameters
+    ----------
+    table: str
+        The name of the table for which indexes will be created.
+    schema: str (default="flight")
+        The name of the schema where the table is located.   
+    """
+    indexes_config = {
+        "search": [
+            {"unique":"UNIQUE", "index_name":"search_pkey", "column":"searchId"},
+            {"unique":"", "index_name":"operationalSearchTime_index", "column":"operationalSearchTime"},
+            {"unique":"", "index_name":"origin_destination_code_index", "column":"""originCode", "destinationCode"""}
+        ],
+        "flight": [
+            {"unique":"UNIQUE", "index_name":"flight_pkey", "column":"searchId"},
+            {"unique":"", "index_name":"legId_flight_index", "column":"legId"}
+        ],
+        "fare": [
+            {"unique":"UNIQUE", "index_name":"fare_pkey", "column":"searchId"},
+            {"unique":"", "index_name":"legId_fare_index", "column":"legId"},
+            {"unique":"", "index_name":"totalFare_index", "column":"totalFare"}
+        ]
+    }
+    assert table in indexes_config.keys(), (
+        f"We only accept {indexes_config.keys()} tables. You asked for the {table} table"
+    )
+    indexes_to_create = indexes_config.get(table, [])
+
+    conn = load_conn()
+    cursor = conn.cursor()
+
+    try:
+        for index_to_create in indexes_to_create:
+            unique = index_to_create.get("unique", "")
+            index_name = index_to_create.get("index_name")
+            column = index_to_create.get("column")
+            command = f"""
+                CREATE {unique} INDEX IF NOT EXISTS "{index_name}"
+                ON {scheama}.{table} USING btree ("{column}")
+            """
+            print(command, "...")
+            cursor.execute(command)
+        conn.commit()
+        print("All indexes created successfully!")
+
+    except Exception as e:
+        conn.rollback()
+        print(str(e))
+
+    finally:
+        cursor.close()
+        conn.close()
+    return
