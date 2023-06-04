@@ -27,8 +27,8 @@ print("Parquets number: ", len(parquet_paths))
 pprint(parquet_paths)
 
 time_start = time()
-database_format = DatabaseFormat(parquet_paths)
-database_format.transform_all_parquets(n_jobs=-1, inset_on_database=True)
+database_format = DatabaseFormat(parquet_paths, inset_on_database=True)
+database_format.transform_all_parquets(n_jobs=-1)
 time_end = time()
 
 print(f" Done in {(time_end - time_start)/60} min or equivalently {(time_end - time_start)/ (60 * 60)} hours")

@@ -31,7 +31,8 @@ class DatabaseFormat:
     - data_upload
     """
 
-    def __init__(self, parquet_paths, separator="||", next_search_id=None, bypass_table_insert=None):
+    def __init__(self, parquet_paths, separator="||", next_search_id=None,
+                 inset_on_database=False, bypass_table_insert=None):
         """
         Parameters
         ----------
@@ -43,6 +44,8 @@ class DatabaseFormat:
             information for each segment separated by separator="||".
         next_search_id: int (default=None)
             Next value of the search_id column. This is used in tables: search, flight, fare.
+        inset_on_database: bool (default=False)
+            If True insert data in database.
         bypass_table_insert: list (default=None)
             List of tables not to upload to the database
         """
@@ -74,6 +77,11 @@ class DatabaseFormat:
                 f"next_search_id must be int, it is {type(next_search_id)}"
             )
             self.next_search_id = next_search_id
+        
+        assert isinstance(inset_on_database, bool), (
+                f"inset_on_database must be bool, it is {type(inset_on_database)}"
+            )
+        self.inset_on_database = inset_on_database
             
         if bypass_table_insert is None:
             bypass_table_insert = []
@@ -84,16 +92,13 @@ class DatabaseFormat:
             self.bypass_table_insert = bypass_table_insert
         
 
-    def transform_all_parquets(self, n_jobs=-1, inset_on_database=False):
+    def transform_all_parquets(self, n_jobs=-1):
         """Transform structured raw data from all parquet into database format
 
         Parameters
         ----------
         n_jobs: int (default=-1, all cores)
             Number of colors.
-        
-        push_in_database: bool (default=False)
-            If True push data in database.
 
         Return
         ------
@@ -107,7 +112,7 @@ class DatabaseFormat:
         
         tables = self._post_processing(tables_list)
         
-        if inset_on_database:
+        if self.inset_on_database:
             print("Saving data...")
             for table_name, table in tables.items():
                 if table_name in self.bypass_table_insert:
