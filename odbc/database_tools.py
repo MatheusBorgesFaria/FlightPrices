@@ -150,24 +150,42 @@ def truncate_cascade_table(table_name, schema="flight"):
     return
 
 
-def reindex(table_name, schema="flight"):
+def reindex(table_name=None, index_name=None, schema="flight"):
     """Reindex the table.
     
     Parameters
     ----------
-    table_name: str
+    table_name: str (default=None)
         The name of the database table.
-    
+    index_name: str (default=None)
+        The name of the index to be reindexed.
     schema: str (default="flight")
         The name of the database schema.
     """
+    assert table_name is not None or index_name is not None, (
+        "You have to pass the table_name or index_name parameter"
+    )
     conn = load_conn()
     cursor = conn.cursor()
-    cursor.execute(f"REINDEX TABLE {schema}.{table_name};")
-    conn.commit()
-    cursor.close()
-    conn.close()
+    try :
+        if isinstance(table_name, str):
+            command = f"REINDEX TABLE {schema}.{table_name}"
+            print(command)
+            cursor.execute(command)
+        elif isinstance(index_name, str):
+            command = f"REINDEX INDEX {schema}.{index_name}"
+            print(command)
+            cursor.execute(command)
+        print("Done!")
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(str(e))
+    finally:
+        cursor.close()
+        conn.close()
     return
+
 
 def kill_database_processes(database_processes):
     """Kill all processes in the database.
@@ -191,3 +209,71 @@ def kill_database_processes(database_processes):
     finally:
         cursor.close()
         conn.close()
+    return
+
+    
+def drop_index(table, schema="flight"):
+    """Drop indexes on a specific table in a PostgreSQL database. 
+
+    Parameters
+    ----------
+    table: str
+        The name of the table.
+    schema: str (default="flight")
+        The name of the schema where the table is located.
+    """
+    conn = load_conn()
+    cursor = conn.cursor()
+
+    try:
+        query_get_table_indexs = f"""
+            SELECT indexname, indexdef
+            FROM pg_indexes
+            WHERE schemaname = '{schema}' AND tablename = '{table}'
+        """
+        indexes = qt.run_query(query_get_table_indexs)
+        for index_name, index_def in zip(indexes["indexname"], indexes["indexdef"]):
+            if "UNIQUE" in index_def:
+                continue
+            command = f"""DROP INDEX {schema}."{index_name}"; """
+            cursor.execute(command)
+            print(command)
+        conn.commit()
+        print(f"Table indexes {schema}.{table} successfully droped.")
+    except Exception as e:
+        conn.rollback()
+        print(f"Error indexes for table {schema}.{table}: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
+    return
+
+
+def delete_rows_by_insertionTime(date, table_name, schema="flight"):
+    """Delete rows from a table based on a specific insertionTime date value.
+
+    Parameters
+    ----------
+    date: str
+        The date value to match (format: 'YYYY-MM-DD').
+    table_name: str
+        The name of the table.
+    schema: str (default="flight")
+        The name of the schema where the table is located.
+    """
+    query = f"""
+    DELETE FROM {schema}.{table_name}
+    WHERE DATE_TRUNC('day', "insertionTime") = DATE '{date}'
+    """
+    conn = load_conn()
+    cursor = conn.cursor()
+    try :
+        cursor.execute(query)
+        conn.commit()
+    except Exception as e:
+        conn.rollback()
+        print(str(e))
+    finally:
+        cursor.close()
+        conn.close()
+    return
