@@ -14,18 +14,15 @@ CREATE INDEX IF NOT EXISTS
 USING btree ("operationalSearchTime");
 
 CREATE INDEX IF NOT EXISTS
-"originCode_index" ON flight.search USING btree ("originCode");
-
-CREATE INDEX IF NOT EXISTS
-"destinationCode_index" ON flight.search USING btree ("destinationCode");
-
+"origin_destination_code_index" ON flight.search
+USING btree ("originCode", "destinationCode");
 
 -- flight table
 CREATE UNIQUE INDEX IF NOT EXISTS
 flight_pkey ON flight.flight USING btree ("searchId");
 
 CREATE INDEX IF NOT EXISTS
-"legId_index" ON flight.flight USING btree ("legId");
+"legId_flight_index" ON flight.flight USING btree ("legId");
 
 
 -- fare table
@@ -33,10 +30,7 @@ CREATE UNIQUE INDEX IF NOT EXISTS
 fare_pkey ON flight.fare USING btree ("searchId");
 
 CREATE INDEX IF NOT EXISTS
-"legId_index" ON flight.fare USING btree ("legId");
-
-CREATE INDEX IF NOT EXISTS
-"baseFare_index" ON flight.fare USING btree ("baseFare");
+"legId_fare_index" ON flight.fare USING btree ("legId");
 
 CREATE INDEX IF NOT EXISTS
 "totalFare_index" ON flight.fare USING btree ("totalFare");
