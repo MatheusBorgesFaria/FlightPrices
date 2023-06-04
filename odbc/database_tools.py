@@ -168,3 +168,26 @@ def reindex(table_name, schema="flight"):
     cursor.close()
     conn.close()
     return
+
+def kill_database_processes(database_processes):
+    """Kill all processes in the database.
+
+    Parameters
+    ----------
+    database_processes : pd.DataFrame
+        DataFrame containing information about the processes in the database.
+    """
+    conn = load_conn()
+    cursor = conn.cursor()
+
+    try:
+        for pid in database_processes['pid'].unique():
+            cursor.execute(f"SELECT pg_terminate_backend({pid})")
+        conn.commit()
+        print("All processes killed successfully.")
+    except Exception as e:
+        conn.rollback()
+        print(f"Error killing processes: {str(e)}")
+    finally:
+        cursor.close()
+        conn.close()
