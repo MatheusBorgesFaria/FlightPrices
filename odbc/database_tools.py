@@ -3,6 +3,7 @@ import numpy as np
 from os import cpu_count
 from joblib import Parallel, delayed
 
+import query_tools as qt
 from connection import load_conn
 from filter_warnings import filter_warnings
 
