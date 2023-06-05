@@ -84,7 +84,7 @@ class DatabaseFormat:
         self.inset_on_database = inset_on_database
             
         if bypass_table_insert is None:
-            bypass_table_insert = []
+            self.bypass_table_insert = []
         else:
             assert isinstance(bypass_table_insert, list), (
                 f"bypass_table_insert must be list, it is {type(bypass_table_insert)}"
