@@ -136,6 +136,8 @@ def insert_database(dataframe, table_name, schema="flight",
             if counter == 1:
                 print(error)
             dataframe_not_inserted = dataframe
+        finally:
+            engine.dispose()
         
         counter += 1
     return dataframe_not_inserted
