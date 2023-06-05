@@ -318,9 +318,6 @@ def create_table_index(table_name, schema="flight"):
             {"unique":"", "index_name":"totalFare_index", "column":"totalFare"}
         ]
     }
-    assert table_name in indexes_config.keys(), (
-        f"We only accept {indexes_config.keys()} tables. You asked for the {table_name} table"
-    )
     indexes_to_create = indexes_config.get(table_name, [])
 
     conn = load_conn()
