@@ -31,7 +31,8 @@ class DatabaseFormat:
     - data_upload
     """
 
-    def __init__(self, parquet_paths, separator="||"):
+    def __init__(self, parquet_paths, separator="||", next_search_id=None,
+                 inset_on_database=False, bypass_table_insert=None):
         """
         Parameters
         ----------
@@ -41,6 +42,12 @@ class DatabaseFormat:
             Some flights have more than one leg, that is, there are stops between
             the initial and final destination. Therefore, these flights have
             information for each segment separated by separator="||".
+        next_search_id: int (default=None)
+            Next value of the search_id column. This is used in tables: search, flight, fare.
+        inset_on_database: bool (default=False)
+            If True insert data in database.
+        bypass_table_insert: list (default=None)
+            List of tables not to upload to the database
         """
         self.parquet_paths = parquet_paths
         self.separator = separator
@@ -63,18 +70,35 @@ class DatabaseFormat:
             "airline": ["airlineCode", "airlineName", "externalAirlineCode", "operatingAirlineName"],
             "equipment": ["equipmentCode", "equipmentDescription"],
         }
+        if next_search_id is None:
+            self.next_search_id = qt.get_max_search_id() + 1
+        else:
+            assert isinstance(next_search_id, int), (
+                f"next_search_id must be int, it is {type(next_search_id)}"
+            )
+            self.next_search_id = next_search_id
+        
+        assert isinstance(inset_on_database, bool), (
+                f"inset_on_database must be bool, it is {type(inset_on_database)}"
+            )
+        self.inset_on_database = inset_on_database
+            
+        if bypass_table_insert is None:
+            self.bypass_table_insert = []
+        else:
+            assert isinstance(bypass_table_insert, list), (
+                f"bypass_table_insert must be list, it is {type(bypass_table_insert)}"
+            )
+            self.bypass_table_insert = bypass_table_insert
         
 
-    def transform_all_parquets(self, n_jobs=-1, inset_on_database=False):
+    def transform_all_parquets(self, n_jobs=-1):
         """Transform structured raw data from all parquet into database format
 
         Parameters
         ----------
         n_jobs: int (default=-1, all cores)
             Number of colors.
-        
-        push_in_database: bool (default=False)
-            If True push data in database.
 
         Return
         ------
@@ -88,13 +112,21 @@ class DatabaseFormat:
         
         tables = self._post_processing(tables_list)
         
-        if inset_on_database:
+        if self.inset_on_database:
             print("Saving data...")
             for table_name, table in tables.items():
+                if table_name in self.bypass_table_insert:
+                    print(f"Skipping {table_name}, it has {len(table_name)} lines.")
+                    continue
+                
                 start_time = time()
                 if_exists = "replace" if table_name in self.unique_value_tables else "append"
-                print(f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}")
-                dataframe_not_inserted = dt.insert_database_parallel(table, table_name, if_exists=if_exists)
+                temporarily_disable_table_indexes = True if table_name in ("search", "flight", "fare") else False
+
+                print((f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}, "
+                       f"temporarily_disable_table_indexes = {temporarily_disable_table_indexes}"))
+                dataframe_not_inserted = dt.insert_database_parallel(table, table_name, if_exists=if_exists,
+                                                                     temporarily_disable_table_indexes=temporarily_disable_table_indexes)
                 end_time = time()
                 print(f"Done in {(end_time - start_time)/60} min!")
                 
@@ -201,14 +233,13 @@ class DatabaseFormat:
         
         print("Post-processing of tables: fix search_id column; get unique values;")
         # Post-processing of tables 
-        next_search_id = qt.get_max_search_id() + 1
         for table_key, table in tables.items():
             tables[table_key] = pd.concat(table, ignore_index=True)
             
             # Fix search_id column
             if "searchId" in self.tables_columns[table_key]:
-                end_search_id = next_search_id + len(tables[table_key])
-                tables[table_key]["searchId"] = range(next_search_id, end_search_id)
+                end_search_id = self.next_search_id + len(tables[table_key])
+                tables[table_key]["searchId"] = range(self.next_search_id, end_search_id)
             
             # Get unique values
             if table_key in self.unique_value_tables:
@@ -327,5 +358,6 @@ class DatabaseFormat:
         """
         assert isinstance(file_paths, list), "file_paths must be list."
         data_upload = pd.DataFrame({"filePath": file_paths})
-        dataframe_not_inserted = dt.insert_database_parallel(data_upload, "data_upload")
+        dataframe_not_inserted = dt.insert_database_parallel(data_upload, "data_upload",
+                                                             temporarily_disable_table_indexes=False)
         return dataframe_not_inserted
