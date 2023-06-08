@@ -121,8 +121,12 @@ class DatabaseFormat:
                 
                 start_time = time()
                 if_exists = "replace" if table_name in self.unique_value_tables else "append"
-                print(f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}")
-                dataframe_not_inserted = dt.insert_database_parallel(table, table_name, if_exists=if_exists)
+                temporarily_disable_table_indexes = True if table_name in ("search", "flight", "fare") else False
+
+                print((f"Saving {table_name} table... {len(table)} lines, if_exists = {if_exists}, "
+                       f"temporarily_disable_table_indexes = {temporarily_disable_table_indexes}"))
+                dataframe_not_inserted = dt.insert_database_parallel(table, table_name, if_exists=if_exists,
+                                                                     temporarily_disable_table_indexes=temporarily_disable_table_indexes)
                 end_time = time()
                 print(f"Done in {(end_time - start_time)/60} min!")
                 
@@ -354,5 +358,6 @@ class DatabaseFormat:
         """
         assert isinstance(file_paths, list), "file_paths must be list."
         data_upload = pd.DataFrame({"filePath": file_paths})
-        dataframe_not_inserted = dt.insert_database_parallel(data_upload, "data_upload")
+        dataframe_not_inserted = dt.insert_database_parallel(data_upload, "data_upload",
+                                                             temporarily_disable_table_indexes=False)
         return dataframe_not_inserted
